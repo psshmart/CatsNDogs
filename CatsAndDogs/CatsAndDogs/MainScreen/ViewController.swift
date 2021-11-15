@@ -7,10 +7,34 @@
 
 import UIKit
 import SnapKit
+import Combine
+
+struct CatsFact: Codable {
+    let fact: String
+    let length: Int
+    init() {
+        fact = ""
+        length = 0
+    }
+}
+
+struct DogsResponse: Codable {
+    let message: String
+    let status: String
+    init() {
+        message = ""
+        status = ""
+    }
+}
 
 class ViewController: UIViewController {
 
     // MARK: - Properties
+    
+    private var cancellable: AnyCancellable?
+    private var loadImageCancellable: AnyCancellable?
+    private var catsCount = 0
+    private var dogsCount = 0
     
     private lazy var segmentedControl: UISegmentedControl = {
         let segmentedControl = UISegmentedControl()
@@ -24,8 +48,8 @@ class ViewController: UIViewController {
     private lazy var resetBarButtonItem: UIBarButtonItem = {
         let button = UIBarButtonItem(title: "Reset",
                                      style: .plain,
-                                     target: nil,
-                                     action: nil)
+                                     target: self,
+                                     action: #selector(reset))
         button.tintColor = .systemBlue
         return button
     }()
@@ -38,6 +62,8 @@ class ViewController: UIViewController {
     private lazy var label: UILabel = {
         let label = UILabel()
         label.text = "Content"
+        label.numberOfLines = 0
+        label.textAlignment = .center
         return label
     }()
     
@@ -45,6 +71,7 @@ class ViewController: UIViewController {
         let view = UIView()
         view.layer.cornerRadius = 10
         view.layer.borderWidth = 1
+        view.layer.masksToBounds = true
         return view
     }()
     
@@ -54,6 +81,7 @@ class ViewController: UIViewController {
         button.backgroundColor = UIColor(red: 255/255, green: 155/255, blue: 138/255, alpha: 1)
         button.setTitleColor(.white, for: .normal)
         button.layer.cornerRadius = 20
+        button.addTarget(self, action: #selector(moreButtonTapped), for: .touchUpInside)
         return button
     }()
     
@@ -95,6 +123,7 @@ class ViewController: UIViewController {
         label.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.centerY.equalToSuperview()
+            make.width.lessThanOrEqualTo(330)
         }
         contentView.snp.makeConstraints { make in
             make.width.equalTo(338)
@@ -131,6 +160,53 @@ class ViewController: UIViewController {
         navigationController?.navigationBar.scrollEdgeAppearance = navBarAppearance
     }
     
+    private func catsRequest() {
+        guard let url = URL(string: "https://catfact.ninja/fact") else {
+            return
+        }
+        
+        self.cancellable = URLSession.shared.dataTaskPublisher(for: url)
+            .map { $0.data }
+            .decode(type: CatsFact.self, decoder: JSONDecoder())
+            .replaceError(with: CatsFact())
+            .eraseToAnyPublisher()
+            .receive(on: DispatchQueue.main)
+            .sink(receiveCompletion: { completion in
+                
+            }) { [weak self] catsFact in
+                self?.label.text = catsFact.fact
+            }
+    }
+    
+    private func dogsRequest() {
+        guard let url = URL(string: "https://dog.ceo/api/breeds/image/random") else {
+            return
+        }
+        
+        self.cancellable = URLSession.shared.dataTaskPublisher(for: url)
+            .map { $0.data }
+            .decode(type: DogsResponse.self, decoder: JSONDecoder())
+            .replaceError(with: DogsResponse())
+            .eraseToAnyPublisher()
+            .sink(receiveCompletion: { completion in
+
+            }) { [weak self] dogsResponse in
+                guard let url = URL(string: dogsResponse.message) else {
+                    return
+                }
+                self?.loadImageCancellable = URLSession.shared.dataTaskPublisher(for: url)
+                    .map { UIImage(data: $0.data) }
+                    .receive(on: DispatchQueue.main)
+                    .sink(receiveCompletion: { completion in
+                        
+                    }) { [weak self] result in
+                        guard let image = result else {
+                            return
+                        }
+                        self?.imageView.image = image
+                    }
+            }
+    }
     // MARK: - Actions
     
     @objc private func setScreen() {
@@ -142,6 +218,22 @@ class ViewController: UIViewController {
             label.isHidden = true
         }
     }
-
+    
+    @objc private func moreButtonTapped() {
+        if segmentedControl.selectedSegmentIndex == 0 {
+            catsRequest()
+            catsCount += 1
+        } else {
+            dogsRequest()
+            dogsCount += 1
+        }
+        scoreLabel.text = "Score: \(catsCount) cats and \(dogsCount) dogs"
+    }
+    
+    @objc private func reset() {
+        catsCount = 0
+        dogsCount = 0
+        scoreLabel.text = "Score: \(catsCount) cats and 0 dogs"
+    }
 }
 
