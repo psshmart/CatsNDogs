@@ -28,25 +28,40 @@ struct DogsResponse: Codable {
 }
 
 class ViewController: UIViewController {
+    
+    enum Constants {
+        static let zero = 0
+        static let one = 1
+        static let cats = "Cats"
+        static let dogs = "Dogs"
+        static let reset = "Reset"
+        static let content = "Content"
+        static let borderWidth: CGFloat = 1
+        static let contentViewRadius: CGFloat = 10
+        static let buttonCornerRadius: CGFloat = 20
+        static let buttonTitle = "more"
+        static let catUrl = "https://catfact.ninja/fact"
+        static let dogUrl = "https://dog.ceo/api/breeds/image/random"
+    }
 
     // MARK: - Properties
     
     private var cancellable: AnyCancellable?
     private var loadImageCancellable: AnyCancellable?
-    private var catsCount = 0
-    private var dogsCount = 0
+    private var catsCount = Constants.zero
+    private var dogsCount = Constants.zero
     
     private lazy var segmentedControl: UISegmentedControl = {
         let segmentedControl = UISegmentedControl()
-        segmentedControl.insertSegment(withTitle: "Cats", at: 0, animated: true)
-        segmentedControl.insertSegment(withTitle: "Dogs", at: 1, animated: true)
-        segmentedControl.selectedSegmentIndex = 0
+        segmentedControl.insertSegment(withTitle: Constants.cats, at: Constants.zero, animated: true)
+        segmentedControl.insertSegment(withTitle: Constants.dogs, at: Constants.one, animated: true)
+        segmentedControl.selectedSegmentIndex = Constants.zero
         segmentedControl.addTarget(self, action: #selector(setScreen), for: .valueChanged)
         return segmentedControl
     }()
     
     private lazy var resetBarButtonItem: UIBarButtonItem = {
-        let button = UIBarButtonItem(title: "Reset",
+        let button = UIBarButtonItem(title: Constants.reset,
                                      style: .plain,
                                      target: self,
                                      action: #selector(reset))
@@ -61,26 +76,26 @@ class ViewController: UIViewController {
     
     private lazy var label: UILabel = {
         let label = UILabel()
-        label.text = "Content"
-        label.numberOfLines = 0
+        label.text = Constants.content
+        label.numberOfLines = Constants.zero
         label.textAlignment = .center
         return label
     }()
     
     private lazy var contentView: UIView = {
         let view = UIView()
-        view.layer.cornerRadius = 10
-        view.layer.borderWidth = 1
+        view.layer.cornerRadius = Constants.contentViewRadius
+        view.layer.borderWidth = Constants.borderWidth
         view.layer.masksToBounds = true
         return view
     }()
     
     private lazy var button: UIButton = {
         let button = UIButton()
-        button.setTitle("more", for: .normal)
-        button.backgroundColor = UIColor(red: 255/255, green: 155/255, blue: 138/255, alpha: 1)
+        button.setTitle(Constants.buttonTitle, for: .normal)
+        button.backgroundColor = UIColor().getMoreButtonColor()
         button.setTitleColor(.white, for: .normal)
-        button.layer.cornerRadius = 20
+        button.layer.cornerRadius = Constants.buttonCornerRadius
         button.addTarget(self, action: #selector(moreButtonTapped), for: .touchUpInside)
         return button
     }()
@@ -123,13 +138,13 @@ class ViewController: UIViewController {
         label.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
             make.centerY.equalToSuperview()
-            make.width.lessThanOrEqualTo(330)
+            make.trailing.leading.equalToSuperview().inset(5)
         }
         contentView.snp.makeConstraints { make in
-            make.width.equalTo(338)
             make.height.equalTo(204.37)
             make.top.equalTo(segmentedControl.snp.bottom).offset(41)
-            make.centerX.equalToSuperview()
+            make.leading.equalToSuperview().inset(19)
+            make.trailing.equalToSuperview().inset(18)
         }
         button.snp.makeConstraints { make in
             make.width.equalTo(144)
@@ -153,7 +168,7 @@ class ViewController: UIViewController {
         let navBarAppearance = UINavigationBarAppearance()
         navBarAppearance.largeTitleTextAttributes =
             [NSAttributedString.Key.foregroundColor: UIColor.black]
-        navBarAppearance.backgroundColor = UIColor(displayP3Red: 249/255, green: 249/255, blue: 249/255, alpha: 0.94)
+        navBarAppearance.backgroundColor = UIColor().getNavBarColor()
         navigationController?.navigationBar.isTranslucent = false
         
         navigationController?.navigationBar.standardAppearance = navBarAppearance
@@ -161,7 +176,7 @@ class ViewController: UIViewController {
     }
     
     private func catsRequest() {
-        guard let url = URL(string: "https://catfact.ninja/fact") else {
+        guard let url = URL(string: Constants.catUrl) else {
             return
         }
         
@@ -179,7 +194,7 @@ class ViewController: UIViewController {
     }
     
     private func dogsRequest() {
-        guard let url = URL(string: "https://dog.ceo/api/breeds/image/random") else {
+        guard let url = URL(string: Constants.dogUrl) else {
             return
         }
         
@@ -210,7 +225,7 @@ class ViewController: UIViewController {
     // MARK: - Actions
     
     @objc private func setScreen() {
-        if segmentedControl.selectedSegmentIndex == 0 {
+        if segmentedControl.selectedSegmentIndex == Constants.zero {
             imageView.isHidden = true
             label.isHidden = false
         } else {
@@ -220,20 +235,30 @@ class ViewController: UIViewController {
     }
     
     @objc private func moreButtonTapped() {
-        if segmentedControl.selectedSegmentIndex == 0 {
+        if segmentedControl.selectedSegmentIndex == Constants.zero {
             catsRequest()
-            catsCount += 1
+            catsCount += Constants.one
         } else {
             dogsRequest()
-            dogsCount += 1
+            dogsCount += Constants.one
         }
         scoreLabel.text = "Score: \(catsCount) cats and \(dogsCount) dogs"
     }
     
     @objc private func reset() {
-        catsCount = 0
-        dogsCount = 0
-        scoreLabel.text = "Score: \(catsCount) cats and 0 dogs"
+        catsCount = Constants.zero
+        dogsCount = Constants.zero
+        scoreLabel.text = "Score: \(catsCount) cats and \(dogsCount) dogs"
     }
 }
 
+
+extension UIColor {
+    func getMoreButtonColor() -> UIColor {
+        UIColor(red: 255/255, green: 155/255, blue: 138/255, alpha: 1)
+    }
+    
+    func getNavBarColor() -> UIColor {
+        UIColor(displayP3Red: 249/255, green: 249/255, blue: 249/255, alpha: 0.94)
+    }
+}
